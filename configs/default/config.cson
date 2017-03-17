@@ -1,8 +1,9 @@
-title: "Default Configuration"
+title: "Advanced Configuration"
 type: "object"
 properties:
   required: [
     "lightNumber"
+    "apiUsername"
   ]
   options:
     title: "Options"
@@ -13,6 +14,13 @@ properties:
         type: "integer"
         default: 0
         minimum: 0
+      ipAddress:
+        title: "Bridge IP Address"
+        type: "string"
+      apiUsername:
+        title: "API Username"
+        type: "string"
+        default: "newdeveloper"
   desiredState:
     title: "Desired State"
     type: "object"
