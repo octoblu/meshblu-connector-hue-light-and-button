@@ -2,42 +2,39 @@ title: "Advanced Configuration"
 type: "object"
 properties:
   required: [
+    "ipAddress"
     "lightNumber"
-    "apiUsername"
+    "lightPollInterval"
+    "sensorName"
+    "sensorPollInterval"
   ]
   options:
     title: "Options"
     type: "object"
     properties:
+      ipAddress:
+        title: "Bridge IP Address"
+        type:  "string"
       lightNumber:
         title: "Light Number"
         type: "integer"
         default: 0
         minimum: 0
-      ipAddress:
-        title: "Bridge IP Address"
+      lightPollInterval:
+        type: "integer"
+        minimum: 500
+        default: 30000
+      sensorName:
         type: "string"
-      apiUsername:
-        title: "API Username"
-        type: "string"
-        default: "newdeveloper"
+        default: "Hue Tap 1"
+      sensorPollInterval:
+        type: "integer"
+        minimum: 500
+        default: 5000
   desiredState:
     title: "Desired State"
     type: "object"
     properties:
       color:
         title: "Color"
-        type: "string"
-      on:
-        title: "Light On"
-        type: "boolean"
-      transitiontime:
-        title: "Transition Time (in milliseconds)"
-        type: "integer"
-        minimum: 0
-      alert:
-        title: "Alert Effect"
-        type: "string"
-      effect:
-        title: "Dynamic Effect"
         type: "string"
