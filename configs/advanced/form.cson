@@ -1,4 +1,6 @@
 angular: [
+  { key: "options.ipAddress" }
+  { key: "options.apiUsername" }
   { key: "options.lightNumber" }
   { key: "desiredState.color" }
   { key: "desiredState.on" }
