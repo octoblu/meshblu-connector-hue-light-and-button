@@ -39,8 +39,10 @@ class HueManager extends EventEmitter
       @_updateLight desiredState: null, callback
 
   close: (callback) =>
-    clearInterval @stateInterval
-    delete @stateInterval
+    clearInterval @pollLightInterval
+    clearInterval @pollSensorInterval
+    delete @pollLightInterval
+    delete @pollSensorInterval
     callback()
 
   getLight: (callback) =>
@@ -64,16 +66,22 @@ class HueManager extends EventEmitter
       callback null, result
 
   _createPollInterval: =>
-    clearInterval @pollInterval
-    clearInterval @stateInterval
+    clearInterval @pollLightInterval
+    clearInterval @pollSensorInterval
 
-    @pollInterval  = setInterval @_updateSensor, @sensorPollInterval if @sensorPollInterval?
-    @stateInterval = setInterval @_updateLight,  @lightPollInterval  if @lightPollInterval?
+    @pollLightInterval = setInterval @_updateLight,  @lightPollInterval  if @lightPollInterval?
+    @pollSensorInterval  = setInterval @_updateSensor, @sensorPollInterval if @sensorPollInterval?
 
   _onUsernameChange: (username) =>
     return if username == @apikey.username
     @apikey.username = username
     @_emit 'change:username', {@apikey}
+
+  _setInitialState: (callback) =>
+    @_checkButtons (error, result) =>
+      return callback error if error?
+      @previousSensorResult = result
+      callback()
 
   _updateLight: (update={}, callback) =>
     callback ?= (error) =>
