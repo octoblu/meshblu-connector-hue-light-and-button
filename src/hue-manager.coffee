@@ -1,3 +1,4 @@
+async          = require 'async'
 _              = require 'lodash'
 HueUtil        = require 'hue-util'
 {EventEmitter} = require 'events'
@@ -8,40 +9,39 @@ class HueManager extends EventEmitter
     @apikey ?= {}
     @options ?= {}
 
-    {ipAddress, @lightNumber} = @options
-    {username} = @apikey
+    {@lightNumber, @lightPollInterval} = @options
+    {@sensorName, @sensorPollInterval} = @options
 
-    @apikey.devicetype = devicetype = 'octoblu-hue-light'
-    @hue = new HueUtil devicetype, ipAddress, username, @_onUsernameChange
+    @apikey.devicetype = 'octoblu-hue-light-and-button'
+    @hue = new HueUtil @apikey.devicetype, @options.ipAddress, @apikey.username, @_onUsernameChange
 
-    @stateInterval = setInterval @_updateState, 30000
     @verify (error) =>
       return callback error if error?
-      @changeLight desiredState, callback
+      async.parallel [
+        @_setInitialState
+        async.apply @changeLight, desiredState
+      ], (error) =>
+        return callback error if error?
+        @_createPollInterval()
+        callback()
 
-  verify: (callback) =>
-    @hue.verify callback
+  changeLight: (data, callback) =>
+    return callback() if _.isEmpty data
+    {
+      color
+      transitionTime
+      alert
+      effect
+    } = data
+
+    @hue.changeLights { @lightNumber, color, transitionTime, alert, effect, on: data.on }, (error) =>
+      return callback error if error?
+      @_updateLight desiredState: null, callback
 
   close: (callback) =>
     clearInterval @stateInterval
     delete @stateInterval
     callback()
-
-  _onUsernameChange: (username) =>
-    return if username == @apikey.username
-    @apikey.username = username
-    @_emit 'change:username', {@apikey}
-
-  _updateState: (update={}, callback) =>
-    callback ?= (error) =>
-      @emit 'error', error if error?
-
-    @getLight (error, light) =>
-      return callback error if error?
-      deviceUpdate = _.pick light, ['color', 'alert', 'effect', 'on']
-      update = _.merge update, deviceUpdate
-      @_emit 'update', update
-      callback()
 
   getLight: (callback) =>
     @hue.getLight @lightNumber, (error, light) =>
@@ -55,17 +55,48 @@ class HueManager extends EventEmitter
         on: light.state.on
       }
 
-  changeLight: (data, callback) =>
-    return callback() if _.isEmpty data
-    {
-      color
-      transitionTime
-      alert
-      effect
-    } = data
+  verify: (callback) =>
+    @hue.verify callback
 
-    @hue.changeLights { @lightNumber, color, transitionTime, alert, effect, on: data.on }, (error) =>
+  _checkButtons: (callback) =>
+    @hue.checkButtons @sensorName, (error, result) =>
       return callback error if error?
-      @_updateState desiredState: null, callback
+      callback null, result
+
+  _createPollInterval: =>
+    clearInterval @pollInterval
+    clearInterval @stateInterval
+
+    @pollInterval  = setInterval @_updateSensor, @sensorPollInterval if @sensorPollInterval?
+    @stateInterval = setInterval @_updateLight,  @lightPollInterval  if @lightPollInterval?
+
+  _onUsernameChange: (username) =>
+    return if username == @apikey.username
+    @apikey.username = username
+    @_emit 'change:username', {@apikey}
+
+  _updateLight: (update={}, callback) =>
+    callback ?= (error) =>
+      @emit 'error', error if error?
+
+    @getLight (error, light) =>
+      return callback error if error?
+      deviceUpdate = _.pick light, ['color', 'alert', 'effect', 'on']
+      update = _.merge update, deviceUpdate
+      return callback() if _.isEqual update, @previousLightUpdate
+      @previousLightUpdate = update
+      @_emit 'update', update
+      callback()
+
+  _updateSensor: (callback) =>
+    callback ?= (error) =>
+      @emit 'error', error if error?
+
+    @_checkButtons (error, result) =>
+      return callback error if error?
+      {state, button} = result ? {}
+      return callback() if _.isEqual result, @previousSensorResult
+      @previousSensorResult = result
+      @_emit 'click', {button, state}
 
 module.exports = HueManager
